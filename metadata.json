@@ -1,0 +1,5 @@
+{
+  "name": "DevOps Build",
+  "description": "An interactive application to demonstrate the 'Semantic Loop DevOps' workflow. This app uses the Gemini API to generate a data schema from a natural language prompt, allows for visual refinement, and then uses the refined schema to generate other development artifacts like SQL or user stories.",
+  "requestFramePermissions": []
+}

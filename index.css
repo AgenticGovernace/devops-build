@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-brand-primary: #0d1117;
+  --color-brand-secondary: #161b22;
+  --color-brand-border: #30363d;
+  --color-brand-text-primary: #c9d1d9;
+  --color-brand-text-secondary: #8b949e;
+  --color-brand-accent: #58a6ff;
+  --color-brand-accent-hover: #80b9ff;
+  --color-brand-success: #238636;
+  --color-brand-danger: #da3633;
+}
+
+/**
+ * Custom styles for Semantic Loop DevOps Demonstrator
+ */
+
+/* Custom animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* Ensure smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar styling for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #161b22;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #30363d #161b22;
+}
+
+/* Vega chart container overrides for dark theme */
+.vega-embed {
+  width: 100% !important;
+}
+
+.vega-embed .vega-actions a {
+  color: #8b949e !important;
+}
+
+.vega-embed .vega-actions a:hover {
+  color: #58a6ff !important;
+}
+
+/* Details/summary arrow rotation */
+details[open] > summary svg {
+  transform: rotate(90deg);
+}
+
+/* Focus visible styles for accessibility */
+:focus-visible {
+  outline: 2px solid #58a6ff;
+  outline-offset: 2px;
+}
