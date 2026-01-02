@@ -1,11 +1,6 @@
 # Semantic Loop DevOps Demonstrator
 
 **An AI-powered database schema design and development artifacts generator built with React, TypeScript, and Google's Gemini AI.**
-
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
-
 ## Quick Start
 
 ```bash
