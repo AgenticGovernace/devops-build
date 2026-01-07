@@ -4,23 +4,44 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
-    "lint": "eslint . --ext .ts,.tsx",
-    "lint:fix": "eslint . --ext .ts,.tsx --fix",
-    "format": "prettier --write \"**/*.{ts,tsx,json,css,md}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,json,css,md}\"",
-    "prepare": "husky"
+    "install:dev": "npm install",
+    "install:prod": "npm install --omit=dev",
+    "install:ci": "npm ci",
+    "install:ci:prod": "npm ci --omit=dev",
+    "start": "npx vite preview",
+    "dev": "npx vite",
+    "serve": "npx vite preview --host",
+    "build": "npx vite build",
+    "build:prod": "npx vite build --mode production",
+    "preview": "npx vite preview",
+    "clean": "rm -rf dist node_modules/.vite",
+    "clean:all": "rm -rf dist node_modules package-lock.json",
+    "rebuild": "npm run clean && npm run build",
+    "typecheck": "npx tsc --noEmit",
+    "test": "npx vitest",
+    "test:run": "npx vitest run",
+    "test:watch": "npx vitest watch",
+    "test:coverage": "npx vitest run --coverage",
+    "test:e2e": "npx playwright test",
+    "test:e2e:headed": "npx playwright test --headed",
+    "test:e2e:debug": "npx playwright test --debug",
+    "test:all": "npm run test:run && npm run test:e2e",
+    "lint": "npx eslint . --ext .ts,.tsx",
+    "lint:fix": "npx eslint . --ext .ts,.tsx --fix",
+    "format": "npx prettier --write \"**/*.{ts,tsx,json,css,md}\"",
+    "format:check": "npx prettier --check \"**/*.{ts,tsx,json,css,md}\"",
+    "validate": "npm run typecheck && npm run lint && npm run test:run",
+    "prepare": "husky",
+    "preversion": "npm run validate",
+    "version": "npm run format && git add -A",
+    "postversion": "git push && git push --tags"
   },
   "lint-staged": {
+    "**/*.{ts,tsx}": [
+      "npx eslint --fix"
+    ],
     "**/*.{ts,tsx,json,css,md}": [
-      "prettier --write",
-      "eslint --fix"
+      "npx prettier --write"
     ]
   },
   "dependencies": {
@@ -30,9 +51,9 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-syntax-highlighter": "^15.6.6",
-    "vega": "^6.2.0",
-    "vega-embed": "6",
-    "vega-lite": "^6.4.1"
+    "vega": "^5.33.1",
+    "vega-embed": "^6.29.0",
+    "vega-lite": "^5.21.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",
@@ -45,6 +66,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/dompurify": "^3.2.0",
     "@types/node": "^22.14.0",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.23",
     "eslint": "^9.16.0",

@@ -5,7 +5,7 @@
 
 ```bash
 # 1. Install dependencies
-npm install
+npm run install:dev
 
 # 2. Set your Gemini API key in .env.local
 echo "GEMINI_API_KEY=your_api_key_here" > .env.local
@@ -145,6 +145,7 @@ GEMINI_API_KEY=your_api_key_here
 EOF
 
 # Start development server
+npm run install:dev
 npm run dev
 ```
 
@@ -393,7 +394,7 @@ CMD ["nginx", "-g", "daemon off;"]
 ```bash
 # Clear and reinstall
 rm -rf node_modules package-lock.json
-npm install
+npm run install:dev
 
 # Clear Vite cache
 rm -rf node_modules/.vite
