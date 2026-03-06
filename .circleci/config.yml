@@ -23,6 +23,7 @@ jobs:
           # https://circleci.com/docs/reference/configuration-reference/?section=reference#save_cache
           keys:
             - node-deps-v1-{{ .Branch }}-{{checksum "package-lock.json"}}
+            - node-deps-v1-{{ .Branch }}-
       - run:
           name: install packages
           command: npm ci
