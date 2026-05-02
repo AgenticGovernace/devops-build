@@ -188,3 +188,6 @@ env/
 .netlify
 *.ts
 /utils
+/.Rproj.user
+devops-build.Rproj
+CLAUDE.html
