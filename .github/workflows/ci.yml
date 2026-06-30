@@ -10,6 +10,7 @@ on:
       - main
 
 permissions:
+  actions: write
   contents: read
 
 jobs:

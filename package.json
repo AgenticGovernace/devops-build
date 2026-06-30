@@ -6,8 +6,8 @@
   "scripts": {
     "install:dev": "npm install",
     "install:prod": "npm install --omit=dev",
-    "install:ci": "npm ci",
-    "install:ci:prod": "npm ci --omit=dev",
+    "install:ci": "npm ci --legacy-peer-deps",
+    "install:ci:prod": "npm ci --omit=dev --legacy-peer-deps",
     "start": "npx vite preview",
     "dev": "npx vite",
     "serve": "npx vite preview --host",
