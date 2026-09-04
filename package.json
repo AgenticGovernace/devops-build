@@ -4,12 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "install:dev": "npm install",
-    "install:prod": "npm install --omit=dev",
+    "install:dev": "npm install --legacy-peer-deps",
+    "install:prod": "npm install --omit=dev --legacy-peer-deps",
     "install:ci": "npm ci --legacy-peer-deps",
     "install:ci:prod": "npm ci --omit=dev --legacy-peer-deps",
     "start": "npx vite preview",
     "dev": "npx vite",
+    "dev:secure": "bash scripts/keychain-secrets.sh run",
+    "secrets:keychain": "bash scripts/keychain-secrets.sh",
     "serve": "npx vite preview --host",
     "build": "npx vite build",
     "build:prod": "npx vite build --mode production",
@@ -45,7 +47,6 @@
     ]
   },
   "dependencies": {
-    "@google/genai": "^1.7.0",
     "dompurify": "^3.4.1",
     "jszip": "^3.10.1",
     "react": "^19.1.0",
@@ -56,6 +57,7 @@
     "vega-lite": "^6.4.2"
   },
   "devDependencies": {
+    "@netlify/functions": "^6.0.0",
     "@eslint/js": "^9.16.0",
     "@playwright/test": "^1.45.3",
     "@tailwindcss/postcss": "^4.1.18",

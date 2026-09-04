@@ -14,11 +14,12 @@
 import React, { Suspense, useEffect } from 'react';
 import { Header } from './components/Header';
 import { StepIndicator } from './components/StepIndicator';
-import { generateSampleData, generateChartSuggestions } from './services/geminiService';
+import { generateSampleData, generateChartSuggestions } from './services/aiService';
 import { Loader } from './components/Loader';
 import { AppProvider, useAppStore, isOperationLoading, isAnyLoading } from './store';
 import type { AppTab } from './types';
 import { ToastContainer } from './components/ToastContainer';
+import { useWebMcpTools } from './webmcp/useWebMcpTools';
 
 const PromptWorkspace = React.lazy(() =>
   import('./components/PromptWorkspace').then(module => ({ default: module.PromptWorkspace }))
@@ -43,7 +44,7 @@ const TabButton: React.FC<{
   isDisabled: boolean;
   isCompleted: boolean;
   onClick: () => void;
-}> = ({ label, icon, isActive, isDisabled, isCompleted, onClick }): JSX.Element => {
+}> = ({ label, icon, isActive, isDisabled, isCompleted, onClick }): React.ReactElement => {
   const baseClasses =
     'flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-t-lg transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent';
   const disabledClasses = 'text-brand-text-secondary/50 cursor-not-allowed';
@@ -90,7 +91,7 @@ const Panel: React.FC<{ title: string; children: React.ReactNode; className?: st
   title,
   children,
   className = '',
-}): JSX.Element => (
+}): React.ReactElement => (
   <div
     className={`bg-brand-secondary border border-brand-border rounded-lg shadow-lg flex flex-col h-full min-h-[300px] ${className}`}
   >
@@ -104,7 +105,7 @@ const Panel: React.FC<{ title: string; children: React.ReactNode; className?: st
 /**
  *
  */
-const Placeholder: React.FC<{ text: string }> = ({ text }): JSX.Element => (
+const Placeholder: React.FC<{ text: string }> = ({ text }): React.ReactElement => (
   <div className="w-full h-full flex items-center justify-center text-brand-text-secondary text-center p-4">
     <p className="text-sm">{text}</p>
   </div>
@@ -113,8 +114,9 @@ const Placeholder: React.FC<{ text: string }> = ({ text }): JSX.Element => (
 /**
  *
  */
-const AppContent: React.FC = (): JSX.Element => {
+const AppContent: React.FC = (): React.ReactElement => {
   const { state, dispatch } = useAppStore();
+  useWebMcpTools(state, dispatch);
   const {
     schema,
     loadingStates,
@@ -125,6 +127,7 @@ const AppContent: React.FC = (): JSX.Element => {
     activeTab,
     layoutTheme,
     theme,
+    aiProvider,
   } = state;
 
   useEffect(() => {
@@ -156,8 +159,8 @@ const AppContent: React.FC = (): JSX.Element => {
     dispatch({ type: 'SET_CHART_SUGGESTIONS', payload: null });
 
     try {
-      const data = await generateSampleData(schema, fullPrompt);
-      const suggestions = await generateChartSuggestions(schema, data);
+      const data = await generateSampleData(schema, fullPrompt, aiProvider);
+      const suggestions = await generateChartSuggestions(schema, data, undefined, aiProvider);
       dispatch({ type: 'SET_GENERATED_SAMPLE_DATA', payload: data });
       dispatch({ type: 'SET_CHART_SUGGESTIONS', payload: suggestions });
       dispatch({ type: 'SET_ACTIVE_TAB', payload: 'Data' });
@@ -386,7 +389,7 @@ const AppContent: React.FC = (): JSX.Element => {
   /**
    *
    */
-  const renderTabsLayout = (): JSX.Element => (
+  const renderTabsLayout = (): React.ReactElement => (
     <div className="flex-grow flex flex-col container mx-auto p-4 md:px-8">
       <div className="flex-shrink-0 border-b border-brand-border mb-6">
         <nav className="-mb-px flex space-x-4" aria-label="Tabs">
@@ -425,7 +428,7 @@ const AppContent: React.FC = (): JSX.Element => {
   /**
    *
    */
-  const renderWizardLayout = (): JSX.Element => {
+  const renderWizardLayout = (): React.ReactElement => {
     const stepMap: Record<AppTab, number> = { Schema: 1, Refine: 2, Data: 3, Export: 4 };
     const currentStep = stepMap[activeTab];
 
@@ -478,7 +481,7 @@ const AppContent: React.FC = (): JSX.Element => {
   /**
    *
    */
-  const renderGridLayout = (): JSX.Element => {
+  const renderGridLayout = (): React.ReactElement => {
     const dataGenerationArea = schema ? (
       renderContentForTab('Data')
     ) : (
@@ -520,7 +523,7 @@ const AppContent: React.FC = (): JSX.Element => {
   /**
    *
    */
-  const renderActiveLayout = (): JSX.Element => {
+  const renderActiveLayout = (): React.ReactElement => {
     switch (layoutTheme) {
       case 'Grid':
         return renderGridLayout();
@@ -544,7 +547,7 @@ const AppContent: React.FC = (): JSX.Element => {
 /**
  *
  */
-const App: React.FC = (): JSX.Element => {
+const App: React.FC = (): React.ReactElement => {
   return (
     <AppProvider>
       <AppContent />

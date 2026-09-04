@@ -72,7 +72,7 @@ const exampleSchema: Schema = {
 };
 
 /**
- * System prompt for initial database schema generation via Gemini AI.
+ * System prompt for initial database schema generation using the selected AI provider.
  *
  * Instructs the AI to act as a database architect and generate a valid JSON schema
  * conforming to the application's TypeScript interfaces. Includes:
@@ -123,7 +123,7 @@ Now, generate a schema for the following request:
 `;
 
 /**
- * System prompt for refining an existing database schema via Gemini AI.
+ * System prompt for refining an existing database schema using the selected AI provider.
  *
  * Allows users to iteratively modify a generated schema using natural language.
  * The AI receives:
@@ -292,7 +292,7 @@ User Criteria:
  * Creates interactive data visualizations using:
  * - Vega-Lite v5 specification format
  * - Embedded data values from sample dataset
- * - Google Search grounding for accuracy and best practices
+ * - Provider-neutral Vega-Lite guidance
  * - Conversation history for iterative refinement
  * - Schema context for understanding data types and relationships
  *
@@ -303,7 +303,7 @@ User Criteria:
  */
 export const VISUALIZATION_PROMPT = `
 You are an expert data visualization specialist. Your task is to generate or refine a Vega-Lite specification for a chart based on a conversational request.
-- **CRITICAL**: The chart will be rendered using Vega-Lite v5. You MUST use your search capabilities to ensure the generated Vega-Lite JSON is valid and uses modern, up-to-date syntax and features according to the latest Vega-Lite v5 specification.
+- **CRITICAL**: The chart will be rendered using Vega-Lite v5. The generated JSON must use valid Vega-Lite v5 syntax and features.
 - The output MUST be a valid JSON object representing a Vega-Lite spec, including the '$schema' property pointing to the correct Vega-Lite v5 schema URL (e.g., "https://vega.github.io/schema/vega-lite/v5.json").
 - Do NOT include any text, explanations, or markdown formatting (like \`\`\`json) outside of the main JSON object.
 - The chart should effectively visualize the provided sample data based on the user's latest request, taking into account the conversation history for context.

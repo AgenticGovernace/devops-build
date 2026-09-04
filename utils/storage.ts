@@ -8,7 +8,8 @@
  * @category Utilities
  */
 
-import type { AppState, Schema, ChatMessage } from '../types';
+import type { AIProvider, AppState, Schema, ChatMessage } from '../types';
+import { getDefaultAIProvider, isAIProvider } from '../services/aiProvider';
 
 /** Key used for storing application state in localStorage */
 const STORAGE_KEY = 'devops-build-state';
@@ -30,6 +31,7 @@ interface PersistedState {
   sqlDialect: 'PostgreSQL' | 'MySQL';
   layoutTheme: 'Tabs' | 'Wizard' | 'Grid';
   generatedSampleData: string | null;
+  aiProvider?: AIProvider;
 }
 
 /**
@@ -54,6 +56,7 @@ export function saveState(state: AppState): void {
       sqlDialect: state.sqlDialect,
       layoutTheme: state.layoutTheme,
       generatedSampleData: state.generatedSampleData,
+      aiProvider: state.aiProvider,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedState));
   } catch (error) {
@@ -100,6 +103,9 @@ export function loadState(): Partial<AppState> | null {
       sqlDialect: persistedState.sqlDialect,
       layoutTheme: persistedState.layoutTheme,
       generatedSampleData: persistedState.generatedSampleData,
+      aiProvider: isAIProvider(persistedState.aiProvider)
+        ? persistedState.aiProvider
+        : getDefaultAIProvider(),
     };
   } catch (error) {
     console.error('Failed to load state from localStorage:', error);

@@ -124,6 +124,9 @@ export type LayoutTheme = 'Tabs' | 'Wizard' | 'Grid';
  */
 export type Theme = 'light' | 'dark';
 
+/** AI provider used for optional model-backed generation. */
+export type AIProvider = 'gemini' | 'openai' | 'anthropic';
+
 /**
  * Identifies specific async operations for granular loading state tracking.
  *
@@ -176,11 +179,12 @@ export type LoadingState = Partial<Record<LoadingOperation, boolean>>;
  * @property {ChatMessage[]} visualizationChatHistory - Separate conversation history for chart generation.
  * @property {object | null} visualizationSpec - Vega-Lite specification object for the current chart, or null if not generated.
  * @property {SQLDialect} sqlDialect - Currently selected SQL dialect (PostgreSQL or MySQL).
- * @property {{uri: string; title: string}[] | null} visualizationSources - Google Search grounding sources for chart generation, or null if not available.
+ * @property {{uri: string; title: string}[] | null} visualizationSources - Optional provider citations for chart generation, or null if unavailable.
  * @property {string[] | null} chartSuggestions - AI-generated chart suggestions based on current data, or null if not generated.
  * @property {AppTab} activeTab - Currently active navigation tab.
  * @property {LayoutTheme} layoutTheme - Currently active layout theme.
  * @property {Theme} theme - Currently active color theme.
+ * @property {AIProvider} aiProvider - Provider selected for optional AI generation.
  *
  * @invariant When schema changes, all dependent artifacts (SQL, stories, docs, tests, data, visualizations) must be invalidated.
  */
@@ -208,6 +212,7 @@ export interface AppState {
   activeTab: AppTab;
   layoutTheme: LayoutTheme;
   theme: Theme;
+  aiProvider: AIProvider;
 }
 
 /**
@@ -319,6 +324,9 @@ export interface ProjectFile {
  * @property {'SET_THEME'} type - Changes the color theme.
  * @property {Theme} payload - New theme identifier.
  *
+ * @property {'SET_AI_PROVIDER'} type - Changes the AI generation provider.
+ * @property {AIProvider} payload - New provider identifier.
+ *
  * @property {'SET_SQL_DIALECT'} type - Changes the SQL dialect for code generation.
  * @property {SQLDialect} payload - New SQL dialect.
  *
@@ -362,5 +370,6 @@ export type AppAction =
   | { type: 'SET_ACTIVE_TAB'; payload: AppTab }
   | { type: 'SET_LAYOUT_THEME'; payload: LayoutTheme }
   | { type: 'SET_THEME'; payload: Theme }
+  | { type: 'SET_AI_PROVIDER'; payload: AIProvider }
   | { type: 'SET_SQL_DIALECT'; payload: SQLDialect }
   | { type: 'RESET_APP' };

@@ -1,15 +1,15 @@
 import React, { useRef, useEffect } from 'react';
 import type { UploadedFile } from '../types';
 import { useAppStore, isOperationLoading } from '../store';
-import { generateSchema } from '../services/geminiService';
+import { generateSchema } from '../services/aiService';
 import { ChatInput } from './ChatInput';
 
 /**
  *
  */
-export const PromptWorkspace: React.FC = (): JSX.Element => {
+export const PromptWorkspace: React.FC = (): React.ReactElement => {
   const { state, dispatch } = useAppStore();
-  const { chatHistory, uploadedFiles, loadingStates, error } = state;
+  const { chatHistory, uploadedFiles, loadingStates, error, aiProvider } = state;
   const isLoading = isOperationLoading(loadingStates, 'schema');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -57,7 +57,7 @@ export const PromptWorkspace: React.FC = (): JSX.Element => {
     dispatch({ type: 'SET_VISUALIZATION_SPEC', payload: null });
 
     try {
-      const newSchema = await generateSchema(chatHistory, uploadedFiles);
+      const newSchema = await generateSchema(chatHistory, uploadedFiles, aiProvider);
       dispatch({ type: 'SET_SCHEMA', payload: newSchema });
       dispatch({ type: 'SET_ACTIVE_TAB', payload: 'Refine' });
     } catch (e) {

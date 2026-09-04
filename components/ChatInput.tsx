@@ -16,7 +16,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   isLoading,
   uploadedFiles,
   onFilesChange,
-}): JSX.Element => {
+}): React.ReactElement => {
   const [message, setMessage] = useState('');
 
   /**

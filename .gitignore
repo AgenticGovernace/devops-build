@@ -187,6 +187,11 @@ env/
 .vercel
 .netlify
 *.ts
+!webmcp/*.ts
+!tests/webmcp*.test.ts
+!services/aiProvider.ts
+!services/aiService.ts
+!tests/ai*.test.ts
 /utils
 /.Rproj.user
 devops-build.Rproj

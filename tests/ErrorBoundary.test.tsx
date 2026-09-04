@@ -2,15 +2,16 @@
  * @fileoverview Unit tests for ErrorBoundary component.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import type { ReactElement } from 'react';
 
 // Component that throws an error
 /**
  *
  */
-const ThrowError = ({ shouldThrow }: { shouldThrow: boolean }): JSX.Element => {
+const ThrowError = ({ shouldThrow }: { shouldThrow: boolean }): ReactElement => {
   if (shouldThrow) {
     throw new Error('Test error');
   }

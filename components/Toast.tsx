@@ -18,7 +18,7 @@ const toastConfig = {
 /**
  *
  */
-export const Toast: React.FC<ToastProps> = ({ toast }): JSX.Element => {
+export const Toast: React.FC<ToastProps> = ({ toast }): React.ReactElement => {
   const { dispatch } = useAppStore();
 
   useEffect(() => {

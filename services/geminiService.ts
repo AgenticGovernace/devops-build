@@ -1,7 +1,7 @@
 /**
- * @fileoverview Google Gemini AI service integration layer.
+ * @fileoverview Provider-neutral AI generation service.
  *
- * This module encapsulates all interactions with Google's Gemini AI API for:
+ * This module encapsulates prompt and response handling for:
  * - Database schema generation and refinement
  * - SQL code generation for multiple dialects
  * - Development artifact generation (user stories, API docs, test cases)
@@ -9,17 +9,16 @@
  * - Data visualization specification generation using Vega-Lite
  * - Chart suggestion recommendations
  *
- * All functions use structured prompts from constants.ts and handle JSON parsing,
- * error recovery, and response cleaning.
+ * All functions use structured prompts from constants.ts and route through the
+ * server-side provider gateway, keeping credentials out of the browser bundle.
  *
- * @module services/geminiService
+ * @module services/aiService
  * @category Services
- * @requires @google/genai
  */
 
-import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
 import DOMPurify from 'dompurify';
-import type { Schema, ChatMessage, UploadedFile, SQLDialect } from '../types';
+import type { AIProvider, Schema, ChatMessage, UploadedFile, SQLDialect } from '../types';
+import { getDefaultAIProvider, requestAI } from './aiProvider';
 import {
   SCHEMA_GENERATION_PROMPT,
   SQL_GENERATION_PROMPT,
@@ -31,19 +30,6 @@ import {
   API_DOCS_PROMPT,
   TEST_CASES_PROMPT,
 } from '../constants';
-
-if (!process.env.API_KEY) {
-  throw new Error('API_KEY environment variable not set');
-}
-
-/**
- * Singleton instance of the Google Gemini AI client.
- * Initialized with API key from environment variables.
- *
- * @constant {GoogleGenAI}
- * @private
- */
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const REQUEST_COOLDOWN = 1000; // 1 second
 let lastRequestTime = 0;
@@ -106,7 +92,7 @@ function cleanJsonString(jsonStr: string): string {
  * Generates a complete database schema from conversational input and uploaded files.
  *
  * Combines chat history and file contents into a comprehensive context, then prompts
- * Gemini AI to generate a structured JSON schema conforming to the Schema interface.
+ * the selected AI provider to generate a structured JSON schema conforming to the Schema interface.
  *
  * @async
  * @function generateSchema
@@ -124,13 +110,14 @@ function cleanJsonString(jsonStr: string): string {
  * @see SCHEMA_GENERATION_PROMPT for the full system prompt used
  *
  * Configuration:
- * - Model: gemini-2.5-flash
+ * - Model: selected by the deployment operator
  * - Temperature: 0.2 (deterministic output)
  * - Response format: application/json (structured output mode)
  */
 export const generateSchema = async (
   chatHistory: ChatMessage[],
-  files: UploadedFile[]
+  files: UploadedFile[],
+  provider: AIProvider = getDefaultAIProvider()
 ): Promise<Schema> => {
   return rateLimitedApiCall(async () => {
     let context = '';
@@ -153,14 +140,7 @@ export const generateSchema = async (
 
     const fullPrompt = `${SCHEMA_GENERATION_PROMPT}\n${context}\nRequest: "${sanitizeInput(latestUserPrompt)}"`;
 
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: fullPrompt,
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.2,
-      },
-    });
+    const response = await requestAI({ prompt: fullPrompt, provider, temperature: 0.2 });
 
     const cleanedText = cleanJsonString(response.text);
 
@@ -200,14 +180,15 @@ export const generateSchema = async (
  * );
  *
  * Configuration:
- * - Model: gemini-2.5-flash
+ * - Model: selected by the deployment operator
  * - Temperature: 0.1 (highly deterministic for precision)
  * - Response format: application/json
  */
 export const refineSchema = async (
   currentSchema: Schema,
   prompt: string,
-  chatHistory: ChatMessage[]
+  chatHistory: ChatMessage[],
+  provider: AIProvider = getDefaultAIProvider()
 ): Promise<Schema> => {
   return rateLimitedApiCall(async () => {
     const historyText = chatHistory
@@ -216,14 +197,7 @@ export const refineSchema = async (
     const promptWithContext = SCHEMA_REFINEMENT_PROMPT.replace('{chat_history}', historyText);
     const fullPrompt = `${promptWithContext}\n${JSON.stringify(currentSchema, null, 2)}\n\nUser Request: "${sanitizeInput(prompt)}"`;
 
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: fullPrompt,
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.1,
-      },
-    });
+    const response = await requestAI({ prompt: fullPrompt, provider, temperature: 0.1 });
 
     const cleanedText = cleanJsonString(response.text);
 
@@ -252,20 +226,18 @@ export const refineSchema = async (
  * @throws {Error} If the API request fails.
  *
  * Configuration:
- * - Model: gemini-2.5-flash
+ * - Model: selected by the deployment operator
  * - Temperature: 0.1 (deterministic SQL generation)
  */
-export const generateSql = async (schema: Schema, dialect: SQLDialect): Promise<string> => {
+export const generateSql = async (
+  schema: Schema,
+  dialect: SQLDialect,
+  provider: AIProvider = getDefaultAIProvider()
+): Promise<string> => {
   return rateLimitedApiCall(async () => {
     const fullPrompt = `${SQL_GENERATION_PROMPT}\n\nDialect: ${dialect}\n\nJSON Schema:\n${JSON.stringify(schema, null, 2)}`;
 
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: fullPrompt,
-      config: {
-        temperature: 0.1,
-      },
-    });
+    const response = await requestAI({ prompt: fullPrompt, provider, temperature: 0.1 });
 
     return response.text
       .replace(/```sql\n/g, '')
@@ -283,17 +255,14 @@ export const generateSql = async (schema: Schema, dialect: SQLDialect): Promise<
  * @returns {Promise<string>} Markdown-formatted user stories with ### headers.
  * Temperature: 0.5 (moderate creativity for story generation)
  */
-export const generateUserStories = async (schema: Schema): Promise<string> => {
+export const generateUserStories = async (
+  schema: Schema,
+  provider: AIProvider = getDefaultAIProvider()
+): Promise<string> => {
   return rateLimitedApiCall(async () => {
     const fullPrompt = `${USER_STORIES_PROMPT}\n${JSON.stringify(schema, null, 2)}`;
 
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: fullPrompt,
-      config: {
-        temperature: 0.5,
-      },
-    });
+    const response = await requestAI({ prompt: fullPrompt, provider, temperature: 0.5 });
 
     return response.text
       .replace(/```markdown\n/g, '')
@@ -307,17 +276,14 @@ export const generateUserStories = async (schema: Schema): Promise<string> => {
  * @async @param {Schema} schema @returns {Promise<string>} OpenAPI-style markdown documentation.
  * Temperature: 0.3
  */
-export const generateApiDocs = async (schema: Schema): Promise<string> => {
+export const generateApiDocs = async (
+  schema: Schema,
+  provider: AIProvider = getDefaultAIProvider()
+): Promise<string> => {
   return rateLimitedApiCall(async () => {
     const fullPrompt = `${API_DOCS_PROMPT}\n${JSON.stringify(schema, null, 2)}`;
 
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: fullPrompt,
-      config: {
-        temperature: 0.3,
-      },
-    });
+    const response = await requestAI({ prompt: fullPrompt, provider, temperature: 0.3 });
 
     return response.text
       .replace(/```markdown\n/g, '')
@@ -331,17 +297,14 @@ export const generateApiDocs = async (schema: Schema): Promise<string> => {
  * @async @param {Schema} schema @returns {Promise<string>} Gherkin test scenarios.
  * Temperature: 0.5
  */
-export const generateTestCases = async (schema: Schema): Promise<string> => {
+export const generateTestCases = async (
+  schema: Schema,
+  provider: AIProvider = getDefaultAIProvider()
+): Promise<string> => {
   return rateLimitedApiCall(async () => {
     const fullPrompt = `${TEST_CASES_PROMPT}\n${JSON.stringify(schema, null, 2)}`;
 
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: fullPrompt,
-      config: {
-        temperature: 0.5,
-      },
-    });
+    const response = await requestAI({ prompt: fullPrompt, provider, temperature: 0.5 });
 
     return response.text
       .replace(/```(gherkin|markdown)?\n/g, '')
@@ -356,36 +319,34 @@ export const generateTestCases = async (schema: Schema): Promise<string> => {
  * @returns {Promise<string>} JSON string with table names as keys and row arrays as values.
  * Temperature: 0.7 (creative data generation)
  */
-export const generateSampleData = async (schema: Schema, prompt: string): Promise<string> => {
+export const generateSampleData = async (
+  schema: Schema,
+  prompt: string,
+  provider: AIProvider = getDefaultAIProvider()
+): Promise<string> => {
   return rateLimitedApiCall(async () => {
     const fullPrompt = `${SAMPLE_DATA_PROMPT}\n"${sanitizeInput(prompt)}"\n\nJSON Schema:\n${JSON.stringify(schema, null, 2)}`;
 
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: fullPrompt,
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.7,
-      },
-    });
+    const response = await requestAI({ prompt: fullPrompt, provider, temperature: 0.7 });
 
     return cleanJsonString(response.text);
   });
 };
 
 /**
- * Generates Vega-Lite chart specifications with Google Search grounding.
+ * Generates Vega-Lite chart specifications with optional provider citations.
  * @async
  * @param {Schema} schema @param {string} data - JSON sample data
  * @param {ChatMessage[]} chatHistory - Conversation for iterative refinement.
  * @returns {Promise<{spec: object, sources: {uri: string, title: string}[] | undefined}>}
- * Vega-Lite spec object and grounding source citations.
+ * Vega-Lite spec object and any source citations returned by the provider.
  * Temperature: 1.0 (maximum creativity for visual design)
  */
 export const generateVisualization = async (
   schema: Schema,
   data: string,
-  chatHistory: ChatMessage[]
+  chatHistory: ChatMessage[],
+  provider: AIProvider = getDefaultAIProvider()
 ): Promise<{ spec: object; sources: { uri: string; title: string }[] | undefined }> => {
   return rateLimitedApiCall(async () => {
     const dataPreview = JSON.stringify(
@@ -407,25 +368,18 @@ export const generateVisualization = async (
     fullPrompt = fullPrompt.replace('{data}', dataPreview);
     fullPrompt = fullPrompt.replace('{chat_history}', historyText);
 
-    const dataPart = { text: `\n\nFull data for embedding: \n${data}` };
-    const promptPart = { text: fullPrompt };
-
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: { parts: [promptPart, dataPart] },
-      config: {
-        temperature: 1.0,
-        tools: [{ googleSearch: {} }],
-      },
+    const response = await requestAI({
+      prompt: fullPrompt,
+      provider,
+      temperature: 1.0,
     });
 
     const cleanedText = cleanJsonString(response.text);
 
-    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-    const sources = groundingChunks
-      ?.map(chunk => chunk.web)
-      .filter((web): web is { uri: string; title: string } => !!web && !!web.uri && !!web.title)
-      .map(({ uri, title }) => ({ uri, title }));
+    const sources = response.sources?.map(source => ({
+      uri: source.url,
+      title: source.title ?? source.url,
+    }));
 
     try {
       const spec = JSON.parse(cleanedText);
@@ -448,7 +402,8 @@ export const generateVisualization = async (
 export const generateChartSuggestions = async (
   schema: Schema,
   data: string,
-  currentSpec?: object | null
+  currentSpec?: object | null,
+  provider: AIProvider = getDefaultAIProvider()
 ): Promise<string[]> => {
   return rateLimitedApiCall(async () => {
     const dataPreview = JSON.stringify(
@@ -467,14 +422,7 @@ export const generateChartSuggestions = async (
       currentSpec ? JSON.stringify(currentSpec, null, 2) : 'N/A'
     );
 
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: fullPrompt,
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.6,
-      },
-    });
+    const response = await requestAI({ prompt: fullPrompt, provider, temperature: 0.6 });
 
     const cleanedText = cleanJsonString(response.text);
     try {
@@ -498,7 +446,11 @@ export const generateChartSuggestions = async (
  * @returns {Promise<string>} The transformed schema as a string.
  * Temperature: 0.1 (deterministic output)
  */
-export const transformSchema = async (schema: Schema, targetFormat: string): Promise<string> => {
+export const transformSchema = async (
+  schema: Schema,
+  targetFormat: string,
+  provider: AIProvider = getDefaultAIProvider()
+): Promise<string> => {
   return rateLimitedApiCall(async () => {
     const fullPrompt = `Transform the following JSON schema into ${targetFormat} format.\n\nJSON Schema:\n${JSON.stringify(
       schema,
@@ -506,13 +458,7 @@ export const transformSchema = async (schema: Schema, targetFormat: string): Pro
       2
     )}`;
 
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: fullPrompt,
-      config: {
-        temperature: 0.1,
-      },
-    });
+    const response = await requestAI({ prompt: fullPrompt, provider, temperature: 0.1 });
 
     return response.text.trim();
   });

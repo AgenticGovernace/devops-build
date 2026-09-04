@@ -10,7 +10,7 @@ import {
   generateUserStories,
   generateApiDocs,
   generateTestCases,
-} from '../services/geminiService';
+} from '../services/aiService';
 import { downloadFile, downloadAllAsCsv } from '../utils/download';
 
 // Component for collapsible user stories
@@ -90,6 +90,7 @@ export const ArtifactsPanel: React.FC = () => {
     generatedApiDocs,
     generatedTestCases,
     sqlDialect,
+    aiProvider,
   } = state;
   const [activeArtifactTab, setActiveArtifactTab] = useState<'SQL' | 'STORIES' | 'API' | 'TESTS'>(
     'SQL'
@@ -122,7 +123,7 @@ export const ArtifactsPanel: React.FC = () => {
     dispatch({ type: 'SET_LOADING_STATE', payload: { operation: 'sql', isLoading: true } });
     dispatch({ type: 'SET_GENERATED_SQL', payload: null });
     try {
-      const sql = await generateSql(schema, sqlDialect);
+      const sql = await generateSql(schema, sqlDialect, aiProvider);
       dispatch({ type: 'SET_GENERATED_SQL', payload: sql });
     } catch (e) {
       const error = e instanceof Error ? e.message : 'An unknown error occurred.';
@@ -141,7 +142,7 @@ export const ArtifactsPanel: React.FC = () => {
     dispatch({ type: 'SET_LOADING_STATE', payload: { operation: 'stories', isLoading: true } });
     dispatch({ type: 'SET_GENERATED_STORIES', payload: null });
     try {
-      const stories = await generateUserStories(schema);
+      const stories = await generateUserStories(schema, aiProvider);
       dispatch({ type: 'SET_GENERATED_STORIES', payload: stories });
     } catch (e) {
       const error = e instanceof Error ? e.message : 'An unknown error occurred.';
@@ -160,7 +161,7 @@ export const ArtifactsPanel: React.FC = () => {
     dispatch({ type: 'SET_LOADING_STATE', payload: { operation: 'apiDocs', isLoading: true } });
     dispatch({ type: 'SET_GENERATED_DOCS', payload: null });
     try {
-      const docs = await generateApiDocs(schema);
+      const docs = await generateApiDocs(schema, aiProvider);
       dispatch({ type: 'SET_GENERATED_DOCS', payload: docs });
     } catch (e) {
       const error = e instanceof Error ? e.message : 'An unknown error occurred.';
@@ -179,7 +180,7 @@ export const ArtifactsPanel: React.FC = () => {
     dispatch({ type: 'SET_LOADING_STATE', payload: { operation: 'testCases', isLoading: true } });
     dispatch({ type: 'SET_GENERATED_TESTS', payload: null });
     try {
-      const tests = await generateTestCases(schema);
+      const tests = await generateTestCases(schema, aiProvider);
       dispatch({ type: 'SET_GENERATED_TESTS', payload: tests });
     } catch (e) {
       const error = e instanceof Error ? e.message : 'An unknown error occurred.';

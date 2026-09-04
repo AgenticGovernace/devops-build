@@ -3,13 +3,13 @@ import vegaEmbed from 'vega-embed';
 import type { ChatMessage } from '../types';
 import { Loader } from './Loader';
 import { useAppStore, isOperationLoading } from '../store';
-import { generateVisualization, generateChartSuggestions } from '../services/geminiService';
+import { generateVisualization, generateChartSuggestions } from '../services/aiService';
 import { downloadFile, jsonToCsv } from '../utils/download';
 
 /**
  *
  */
-export const DataVisualizer: React.FC = (): JSX.Element | null => {
+export const DataVisualizer: React.FC = (): React.ReactElement | null => {
   const { state, dispatch } = useAppStore();
   const {
     generatedSampleData: sampleData,
@@ -20,6 +20,7 @@ export const DataVisualizer: React.FC = (): JSX.Element | null => {
     loadingStates,
     error,
     schema,
+    aiProvider,
   } = state;
   const isLoading = isOperationLoading(loadingStates, 'visualization');
   const [message, setMessage] = useState('');
@@ -53,8 +54,13 @@ export const DataVisualizer: React.FC = (): JSX.Element | null => {
     dispatch({ type: 'SET_VISUALIZATION_SPEC', payload: null });
 
     try {
-      const { spec, sources } = await generateVisualization(schema, sampleData, history);
-      const suggestions = await generateChartSuggestions(schema, sampleData, spec);
+      const { spec, sources } = await generateVisualization(
+        schema,
+        sampleData,
+        history,
+        aiProvider
+      );
+      const suggestions = await generateChartSuggestions(schema, sampleData, spec, aiProvider);
       dispatch({ type: 'SET_VISUALIZATION_SPEC', payload: spec });
       dispatch({ type: 'SET_VISUALIZATION_SOURCES', payload: sources ?? null });
       dispatch({ type: 'SET_CHART_SUGGESTIONS', payload: suggestions });

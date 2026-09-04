@@ -2,13 +2,13 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import { vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '../App';
-import * as geminiService from '../services/geminiService';
+import * as aiService from '../services/aiService';
 
-// Mock the geminiService
-vi.mock('../services/geminiService');
-const mockedGeminiService = geminiService as jest.Mocked<typeof geminiService>;
+// Mock the provider-neutral AI service
+vi.mock('../services/aiService');
+const mockedAIService = vi.mocked(aiService);
 
 const mockSchema = {
   description: 'A test schema',
@@ -25,22 +25,20 @@ const mockSchema = {
 
 describe('App Integration Tests', () => {
   beforeEach(() => {
-    mockedGeminiService.generateSchema.mockImplementation(() => {
+    mockedAIService.generateSchema.mockImplementation(() => {
       return new Promise(resolve => {
         setTimeout(() => resolve(mockSchema), 100);
       });
     });
-    mockedGeminiService.generateSql.mockResolvedValue(
+    mockedAIService.generateSql.mockResolvedValue(
       'CREATE TABLE users (id integer PRIMARY KEY, name varchar);'
     );
-    mockedGeminiService.generateUserStories.mockResolvedValue('As a user, I can view other users.');
-    mockedGeminiService.generateApiDocs.mockResolvedValue('GET /users');
-    mockedGeminiService.generateTestCases.mockResolvedValue('Feature: Users');
-    mockedGeminiService.generateSampleData.mockResolvedValue(
-      '{"users": [{"id": 1, "name": "Alice"}]}'
-    );
-    mockedGeminiService.generateVisualization.mockResolvedValue({ spec: {}, sources: [] });
-    mockedGeminiService.generateChartSuggestions.mockResolvedValue(['A bar chart of users']);
+    mockedAIService.generateUserStories.mockResolvedValue('As a user, I can view other users.');
+    mockedAIService.generateApiDocs.mockResolvedValue('GET /users');
+    mockedAIService.generateTestCases.mockResolvedValue('Feature: Users');
+    mockedAIService.generateSampleData.mockResolvedValue('{"users": [{"id": 1, "name": "Alice"}]}');
+    mockedAIService.generateVisualization.mockResolvedValue({ spec: {}, sources: [] });
+    mockedAIService.generateChartSuggestions.mockResolvedValue(['A bar chart of users']);
   });
 
   afterEach(() => {
@@ -67,7 +65,7 @@ describe('App Integration Tests', () => {
 
     // 4. The application calls the generateSchema service
     await waitFor(() => {
-      expect(mockedGeminiService.generateSchema).toHaveBeenCalledTimes(1);
+      expect(mockedAIService.generateSchema).toHaveBeenCalledTimes(1);
     });
 
     // 5. The application receives a schema and displays it
@@ -80,6 +78,25 @@ describe('App Integration Tests', () => {
     expect(await screen.findByText('users')).toBeInTheDocument();
     expect(await screen.findByText('id')).toBeInTheDocument();
     expect(await screen.findByText('name')).toBeInTheDocument();
+  });
+
+  test('routes generation through the provider selected in the header', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.selectOptions(screen.getByLabelText('AI provider'), 'openai');
+    const promptInput = await screen.findByPlaceholderText(/Type your message/);
+    await user.type(promptInput, 'Create an orders table');
+    await user.click(screen.getByText('Send'));
+    await user.click(screen.getByText('Generate Schema'));
+
+    await waitFor(() => {
+      expect(mockedAIService.generateSchema).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.any(Array),
+        'openai'
+      );
+    });
   });
 
   test('should handle schema generation with file uploads', async () => {
@@ -112,14 +129,15 @@ describe('App Integration Tests', () => {
 
     // 6. The application calls the generateSchema service with correct data
     await waitFor(() => {
-      expect(mockedGeminiService.generateSchema).toHaveBeenCalledTimes(1);
-      expect(mockedGeminiService.generateSchema).toHaveBeenCalledWith(
+      expect(mockedAIService.generateSchema).toHaveBeenCalledTimes(1);
+      expect(mockedAIService.generateSchema).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({ role: 'user', text: 'Create a schema from the file' }),
         ]),
         expect.arrayContaining([
           expect.objectContaining({ name: 'test.txt', content: 'file content' }),
-        ])
+        ]),
+        'gemini'
       );
     });
 

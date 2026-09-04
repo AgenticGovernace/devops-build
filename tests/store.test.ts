@@ -10,9 +10,12 @@ import type { AppState, AppAction, Schema, ChatMessage, LoadingOperation } from 
  * In a real scenario, you'd export the reducer from store.tsx.
  */
 const initialState: AppState = {
+  toasts: [],
   chatHistory: [],
   uploadedFiles: [],
   schema: null,
+  schemaHistory: [],
+  currentSchemaIndex: -1,
   generatedSql: null,
   generatedUserStories: null,
   generatedApiDocs: null,
@@ -29,8 +32,13 @@ const initialState: AppState = {
   chartSuggestions: null,
   activeTab: 'Schema',
   layoutTheme: 'Tabs',
+  theme: 'dark',
+  aiProvider: 'gemini',
 };
 
+/**
+ *
+ */
 const appReducer = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
     case 'SET_LOADING_STATE':
@@ -38,30 +46,53 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ...state,
         loadingStates: {
           ...state.loadingStates,
-          [action.payload.operation]: action.payload.isLoading
-        }
+          [action.payload.operation]: action.payload.isLoading,
+        },
       };
-    case 'SET_ERROR': return { ...state, error: action.payload };
-    case 'SET_CHAT_HISTORY': return { ...state, chatHistory: action.payload };
-    case 'ADD_CHAT_MESSAGE': return { ...state, chatHistory: [...state.chatHistory, action.payload] };
-    case 'SET_UPLOADED_FILES': return { ...state, uploadedFiles: action.payload };
-    case 'SET_SCHEMA': return { ...state, schema: action.payload };
-    case 'SET_GENERATED_SQL': return { ...state, generatedSql: action.payload };
-    case 'SET_GENERATED_STORIES': return { ...state, generatedUserStories: action.payload };
-    case 'SET_GENERATED_DOCS': return { ...state, generatedApiDocs: action.payload };
-    case 'SET_GENERATED_TESTS': return { ...state, generatedTestCases: action.payload };
-    case 'SET_SAMPLE_DATA_PROMPT': return { ...state, sampleDataPrompt: action.payload };
-    case 'SET_SAMPLE_DATA_ROW_COUNT': return { ...state, sampleDataRowCount: action.payload };
-    case 'SET_GENERATED_SAMPLE_DATA': return { ...state, generatedSampleData: action.payload };
-    case 'SET_VISUALIZATION_CHAT_HISTORY': return { ...state, visualizationChatHistory: action.payload };
-    case 'SET_VISUALIZATION_SPEC': return { ...state, visualizationSpec: action.payload };
-    case 'SET_VISUALIZATION_SOURCES': return { ...state, visualizationSources: action.payload };
-    case 'SET_CHART_SUGGESTIONS': return { ...state, chartSuggestions: action.payload };
-    case 'SET_ACTIVE_TAB': return { ...state, activeTab: action.payload };
-    case 'SET_LAYOUT_THEME': return { ...state, layoutTheme: action.payload };
-    case 'SET_SQL_DIALECT': return { ...state, sqlDialect: action.payload };
-    case 'RESET_APP': return { ...initialState, layoutTheme: state.layoutTheme };
-    default: return state;
+    case 'SET_ERROR':
+      return { ...state, error: action.payload };
+    case 'SET_CHAT_HISTORY':
+      return { ...state, chatHistory: action.payload };
+    case 'ADD_CHAT_MESSAGE':
+      return { ...state, chatHistory: [...state.chatHistory, action.payload] };
+    case 'SET_UPLOADED_FILES':
+      return { ...state, uploadedFiles: action.payload };
+    case 'SET_SCHEMA':
+      return { ...state, schema: action.payload };
+    case 'SET_GENERATED_SQL':
+      return { ...state, generatedSql: action.payload };
+    case 'SET_GENERATED_STORIES':
+      return { ...state, generatedUserStories: action.payload };
+    case 'SET_GENERATED_DOCS':
+      return { ...state, generatedApiDocs: action.payload };
+    case 'SET_GENERATED_TESTS':
+      return { ...state, generatedTestCases: action.payload };
+    case 'SET_SAMPLE_DATA_PROMPT':
+      return { ...state, sampleDataPrompt: action.payload };
+    case 'SET_SAMPLE_DATA_ROW_COUNT':
+      return { ...state, sampleDataRowCount: action.payload };
+    case 'SET_GENERATED_SAMPLE_DATA':
+      return { ...state, generatedSampleData: action.payload };
+    case 'SET_VISUALIZATION_CHAT_HISTORY':
+      return { ...state, visualizationChatHistory: action.payload };
+    case 'SET_VISUALIZATION_SPEC':
+      return { ...state, visualizationSpec: action.payload };
+    case 'SET_VISUALIZATION_SOURCES':
+      return { ...state, visualizationSources: action.payload };
+    case 'SET_CHART_SUGGESTIONS':
+      return { ...state, chartSuggestions: action.payload };
+    case 'SET_ACTIVE_TAB':
+      return { ...state, activeTab: action.payload };
+    case 'SET_LAYOUT_THEME':
+      return { ...state, layoutTheme: action.payload };
+    case 'SET_AI_PROVIDER':
+      return { ...state, aiProvider: action.payload };
+    case 'SET_SQL_DIALECT':
+      return { ...state, sqlDialect: action.payload };
+    case 'RESET_APP':
+      return { ...initialState, layoutTheme: state.layoutTheme };
+    default:
+      return state;
   }
 };
 
@@ -70,7 +101,7 @@ describe('appReducer', () => {
     it('should set loading state for schema operation to true', () => {
       const result = appReducer(initialState, {
         type: 'SET_LOADING_STATE',
-        payload: { operation: 'schema', isLoading: true }
+        payload: { operation: 'schema', isLoading: true },
       });
       expect(result.loadingStates.schema).toBe(true);
     });
@@ -79,7 +110,7 @@ describe('appReducer', () => {
       const loadingState = { ...initialState, loadingStates: { schema: true } };
       const result = appReducer(loadingState, {
         type: 'SET_LOADING_STATE',
-        payload: { operation: 'schema', isLoading: false }
+        payload: { operation: 'schema', isLoading: false },
       });
       expect(result.loadingStates.schema).toBe(false);
     });
@@ -87,18 +118,18 @@ describe('appReducer', () => {
     it('should handle multiple operations independently', () => {
       let state = appReducer(initialState, {
         type: 'SET_LOADING_STATE',
-        payload: { operation: 'schema', isLoading: true }
+        payload: { operation: 'schema', isLoading: true },
       });
       state = appReducer(state, {
         type: 'SET_LOADING_STATE',
-        payload: { operation: 'sql', isLoading: true }
+        payload: { operation: 'sql', isLoading: true },
       });
       expect(state.loadingStates.schema).toBe(true);
       expect(state.loadingStates.sql).toBe(true);
 
       state = appReducer(state, {
         type: 'SET_LOADING_STATE',
-        payload: { operation: 'schema', isLoading: false }
+        payload: { operation: 'schema', isLoading: false },
       });
       expect(state.loadingStates.schema).toBe(false);
       expect(state.loadingStates.sql).toBe(true);
@@ -107,7 +138,10 @@ describe('appReducer', () => {
 
   describe('SET_ERROR', () => {
     it('should set error message', () => {
-      const result = appReducer(initialState, { type: 'SET_ERROR', payload: 'Something went wrong' });
+      const result = appReducer(initialState, {
+        type: 'SET_ERROR',
+        payload: 'Something went wrong',
+      });
       expect(result.error).toBe('Something went wrong');
     });
 
@@ -130,7 +164,10 @@ describe('appReducer', () => {
       const existingMessage: ChatMessage = { role: 'model', text: 'Hi there' };
       const stateWithMessage = { ...initialState, chatHistory: [existingMessage] };
       const newMessage: ChatMessage = { role: 'user', text: 'How are you?' };
-      const result = appReducer(stateWithMessage, { type: 'ADD_CHAT_MESSAGE', payload: newMessage });
+      const result = appReducer(stateWithMessage, {
+        type: 'ADD_CHAT_MESSAGE',
+        payload: newMessage,
+      });
       expect(result.chatHistory).toHaveLength(2);
       expect(result.chatHistory[0]).toEqual(existingMessage);
       expect(result.chatHistory[1]).toEqual(newMessage);
@@ -175,6 +212,13 @@ describe('appReducer', () => {
     });
   });
 
+  describe('SET_AI_PROVIDER', () => {
+    it('should change the AI provider', () => {
+      const result = appReducer(initialState, { type: 'SET_AI_PROVIDER', payload: 'openai' });
+      expect(result.aiProvider).toBe('openai');
+    });
+  });
+
   describe('RESET_APP', () => {
     it('should reset state to initial values', () => {
       const modifiedState: AppState = {
@@ -211,7 +255,7 @@ describe('appReducer', () => {
       expect(() => {
         appReducer(frozenState as AppState, {
           type: 'SET_LOADING_STATE',
-          payload: { operation: 'schema', isLoading: true }
+          payload: { operation: 'schema', isLoading: true },
         });
       }).not.toThrow();
     });
@@ -219,7 +263,7 @@ describe('appReducer', () => {
     it('should return new object reference on state change', () => {
       const result = appReducer(initialState, {
         type: 'SET_LOADING_STATE',
-        payload: { operation: 'schema', isLoading: true }
+        payload: { operation: 'schema', isLoading: true },
       });
       expect(result).not.toBe(initialState);
     });

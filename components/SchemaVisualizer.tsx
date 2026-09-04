@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Table, Column } from '../types';
+import type { AIProvider, Table, Column } from '../types';
 import { useAppStore, isOperationLoading } from '../store';
-import { refineSchema, transformSchema } from '../services/geminiService';
+import { refineSchema, transformSchema } from '../services/aiService';
 import { downloadFile } from '../utils/download';
 
 /**
@@ -13,7 +13,7 @@ const EditableColumnType: React.FC<{
   currentType: string;
   onRefine: (prompt: string) => void;
   isLoading: boolean;
-}> = ({ tableName, columnName, currentType, onRefine, isLoading }): JSX.Element => {
+}> = ({ tableName, columnName, currentType, onRefine, isLoading }): React.ReactElement => {
   const [isEditing, setIsEditing] = useState(false);
   const [type, setType] = useState(currentType);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -88,7 +88,7 @@ const ColumnItem: React.FC<{
   tableName: string;
   onRefine: (prompt: string) => void;
   isLoading: boolean;
-}> = ({ column, tableName, onRefine, isLoading }): JSX.Element => {
+}> = ({ column, tableName, onRefine, isLoading }): React.ReactElement => {
   /**
    *
    */
@@ -151,14 +151,15 @@ const TableCard: React.FC<{
   table: Table;
   onRefine: (prompt: string) => void;
   isLoading: boolean;
-}> = ({ table, onRefine, isLoading }): JSX.Element => {
+  aiProvider: AIProvider;
+}> = ({ table, onRefine, isLoading, aiProvider }): React.ReactElement => {
   const [exportFormat, setExportFormat] = useState('TypeScript');
   /**
    *
    */
   const handleExport = async (): Promise<void> => {
     if (!table) return;
-    const transformedSchema = await transformSchema({ tables: [table] }, exportFormat);
+    const transformedSchema = await transformSchema({ tables: [table] }, exportFormat, aiProvider);
     navigator.clipboard.writeText(transformedSchema);
   };
 
@@ -220,9 +221,9 @@ const TableCard: React.FC<{
 /**
  *
  */
-export const SchemaVisualizer: React.FC = (): JSX.Element | null => {
+export const SchemaVisualizer: React.FC = (): React.ReactElement | null => {
   const { state, dispatch } = useAppStore();
-  const { schema, loadingStates, error, chatHistory } = state;
+  const { schema, loadingStates, error, chatHistory, aiProvider } = state;
   const isLoading = isOperationLoading(loadingStates, 'refine');
   const [refinementPrompt, setRefinementPrompt] = useState('');
 
@@ -235,7 +236,7 @@ export const SchemaVisualizer: React.FC = (): JSX.Element | null => {
     dispatch({ type: 'SET_LOADING_STATE', payload: { operation: 'refine', isLoading: true } });
     dispatch({ type: 'SET_ERROR', payload: null });
     try {
-      const newSchema = await refineSchema(schema, prompt, chatHistory);
+      const newSchema = await refineSchema(schema, prompt, chatHistory, aiProvider);
       dispatch({ type: 'SET_SCHEMA', payload: newSchema });
 
       // Clear dependent artifacts on schema change
@@ -342,6 +343,7 @@ export const SchemaVisualizer: React.FC = (): JSX.Element | null => {
             table={table}
             onRefine={handleRefineSchema}
             isLoading={isLoading}
+            aiProvider={aiProvider}
           />
         ))}
       </div>

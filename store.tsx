@@ -17,6 +17,7 @@ import {
   DEFAULT_SAMPLE_DATA_ROW_COUNT,
 } from './constants';
 import { saveState, loadState, clearState } from './utils/storage';
+import { getDefaultAIProvider } from './services/aiProvider';
 
 /**
  * Default application state values.
@@ -53,6 +54,7 @@ const defaultState: AppState = {
   activeTab: 'Schema',
   layoutTheme: 'Tabs',
   theme: 'dark',
+  aiProvider: getDefaultAIProvider(),
 };
 
 /**
@@ -150,6 +152,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         toasts: [], // Also clear toasts
         layoutTheme: state.layoutTheme, // Persist user's layout theme
         theme: state.theme, // Persist user's theme
+        aiProvider: state.aiProvider, // Persist provider preference without storing credentials
         chatHistory: payload.chatHistory,
         uploadedFiles: payload.uploadedFiles,
         schema: payload.schema,
@@ -235,7 +238,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return { ...state, visualizationChatHistory: action.payload };
     case 'SET_VISUALIZATION_SPEC':
       return { ...state, visualizationSpec: action.payload };
-    case 'SET_VISUALization_SOURCES':
+    case 'SET_VISUALIZATION_SOURCES':
       return { ...state, visualizationSources: action.payload };
     case 'SET_CHART_SUGGESTIONS':
       return { ...state, chartSuggestions: action.payload };
@@ -245,6 +248,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return { ...state, layoutTheme: action.payload };
     case 'SET_THEME':
       return { ...state, theme: action.payload };
+    case 'SET_AI_PROVIDER':
+      return { ...state, aiProvider: action.payload };
     case 'SET_SQL_DIALECT':
       return { ...state, sqlDialect: action.payload };
     case 'RESET_APP':
@@ -253,6 +258,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ...defaultState,
         layoutTheme: state.layoutTheme,
         theme: state.theme,
+        aiProvider: state.aiProvider,
         schemaHistory: [],
         currentSchemaIndex: -1,
       };
@@ -292,7 +298,9 @@ const AppContext = createContext<{ state: AppState; dispatch: Dispatch<AppAction
  * </AppProvider>
  * ```
  */
-export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }): JSX.Element => {
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}): React.ReactElement => {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
   // Persist state to localStorage on changes

@@ -3,7 +3,6 @@
  *
  * Configures the testing environment with:
  * - jest-dom matchers for DOM assertions
- * - Mock for environment variables
  * - Cleanup after each test
  */
 
@@ -14,14 +13,6 @@ import { cleanup } from '@testing-library/react';
 // Cleanup after each test
 afterEach(() => {
   cleanup();
-});
-
-// Mock process.env for API key
-vi.stubGlobal('process', {
-  env: {
-    API_KEY: 'test-api-key',
-    GEMINI_API_KEY: 'test-api-key',
-  },
 });
 
 // Mock window.matchMedia for components that use it
@@ -59,6 +50,10 @@ const localStorageMock = (() => {
     /**
      *
      */
+    getItem: (key: string): string | null => store[key] ?? null,
+    /**
+     *
+     */
     setItem: (key: string, value: string): void => {
       store[key] = value.toString();
     },
@@ -67,6 +62,12 @@ const localStorageMock = (() => {
      */
     clear: (): void => {
       store = {};
+    },
+    /**
+     *
+     */
+    removeItem: (key: string): void => {
+      delete store[key];
     },
   };
 })();

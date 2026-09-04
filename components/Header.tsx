@@ -1,9 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { LayoutTheme, ProjectFile } from '../types';
+import type { AIProvider, LayoutTheme, ProjectFile } from '../types';
 import { useAppStore } from '../store';
 import { downloadFile } from '../utils/download';
 
 const PROJECT_FILE_VERSION = 1;
+
+const AI_PROVIDER_OPTIONS: { id: AIProvider; label: string }[] = [
+  { id: 'gemini', label: 'Gemini' },
+  { id: 'openai', label: 'OpenAI' },
+  { id: 'anthropic', label: 'Anthropic' },
+];
 
 const themeOptions: { id: LayoutTheme; name: string; icon: React.ReactNode }[] = [
   {
@@ -67,7 +73,7 @@ const themeOptions: { id: LayoutTheme; name: string; icon: React.ReactNode }[] =
 /**
  *
  */
-export const Header: React.FC = (): JSX.Element => {
+export const Header: React.FC = (): React.ReactElement => {
   const { state, dispatch } = useAppStore();
   const [isThemeOpen, setIsThemeOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -103,6 +109,19 @@ export const Header: React.FC = (): JSX.Element => {
   const handleThemeToggle = (): void => {
     const newTheme = state.theme === 'dark' ? 'light' : 'dark';
     dispatch({ type: 'SET_THEME', payload: newTheme });
+  };
+
+  /** Changes only the provider preference; credentials remain server-side. */
+  const handleProviderChange = (event: React.ChangeEvent<HTMLSelectElement>): void => {
+    const aiProvider = event.target.value as AIProvider;
+    dispatch({ type: 'SET_AI_PROVIDER', payload: aiProvider });
+    dispatch({
+      type: 'ADD_TOAST',
+      payload: {
+        message: `${AI_PROVIDER_OPTIONS.find(option => option.id === aiProvider)?.label} selected for AI generation.`,
+        type: 'info',
+      },
+    });
   };
 
   /**
@@ -214,7 +233,7 @@ export const Header: React.FC = (): JSX.Element => {
 
   return (
     <header className="bg-brand-secondary border-b border-brand-border p-4 shadow-md flex-shrink-0">
-      <div className="container mx-auto flex items-center justify-between">
+      <div className="container mx-auto flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -234,7 +253,28 @@ export const Header: React.FC = (): JSX.Element => {
             Semantic Loop DevOps Demonstrator
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <label
+            htmlFor="ai-provider"
+            className="flex items-center gap-2 rounded-md bg-brand-border px-3 py-2 text-sm font-semibold text-brand-text-secondary"
+            title="Provider credentials are configured securely by the site operator."
+          >
+            <span>AI</span>
+            <select
+              id="ai-provider"
+              value={state.aiProvider}
+              onChange={handleProviderChange}
+              disabled={Object.values(state.loadingStates).some(Boolean)}
+              className="rounded border border-brand-border bg-brand-secondary px-2 py-1 text-brand-text-primary disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="AI provider"
+            >
+              {AI_PROVIDER_OPTIONS.map(option => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             onClick={handleSaveProject}
             className="px-3 py-2 bg-brand-border text-brand-text-secondary text-sm font-semibold rounded-md hover:bg-brand-secondary-hover hover:text-white transition duration-200 flex items-center gap-2"
@@ -348,7 +388,9 @@ export const Header: React.FC = (): JSX.Element => {
                 {themeOptions.map((option, index) => (
                   <button
                     key={option.id}
-                    ref={el => (menuItemsRef.current[index] = el)}
+                    ref={el => {
+                      menuItemsRef.current[index] = el;
+                    }}
                     role="menuitem"
                     tabIndex={-1}
                     onClick={() => handleThemeChange(option.id)}

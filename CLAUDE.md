@@ -4,161 +4,143 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-DevOps Build is an interactive React application demonstrating "Semantic Loop DevOps" workflow. It uses Google's Gemini API to generate database schemas from natural language prompts, allows visual refinement, generates sample data, creates visualizations, and exports development artifacts (SQL, user stories, API docs, test cases).
+DevOps Build is an interactive React application demonstrating a "Semantic Loop DevOps" workflow. It can use Gemini, OpenAI, or Anthropic to generate database schemas from natural-language prompts, supports visual refinement and sample-data generation, creates visualizations, and exports development artifacts (SQL, user stories, API docs, and test cases).
 
 ## Development Commands
 
 ### Setup
+
 ```bash
-npm install
+npm install --legacy-peer-deps
 ```
 
-### Environment Configuration
-Set `GEMINI_API_KEY` in `.env.local` to your Gemini API key before running the app.
-
 ### Development Server
+
 ```bash
 npm run dev
 ```
-Runs on `http://localhost:3000` (configured in vite.config.ts)
 
-### Build
+The Vite-only UI runs at `http://localhost:3000`. To exercise AI features through the local Netlify Function gateway, run:
+
 ```bash
-npm run build
+npx netlify dev
 ```
 
-### Preview Production Build
+The local UI and WebMCP tools do not require a provider API key.
+
+For local AI development on macOS, store keys using `npm run secrets:keychain -- set <provider>` and start with `npm run dev:secure`. The helper reads macOS Keychain directly into the Netlify development process. Use `npm run secrets:keychain -- remove <provider>` to delete a stored key. Do not create plaintext `.env` files.
+
+### Build and validation
+
 ```bash
+npm run validate
+npm run build
 npm run preview
 ```
 
 ## Architecture
 
 ### State Management
-The app uses React Context + useReducer pattern for global state management:
-- **store.tsx**: Defines `AppState`, `AppAction`, and `appReducer`
-- **State Provider**: `AppProvider` wraps the entire app (App.tsx:266)
-- **Hook**: `useAppStore()` provides access to `state` and `dispatch`
 
-All state updates are performed through dispatched actions (e.g., `dispatch({ type: 'SET_SCHEMA', payload: schema })`).
+The app uses React Context and `useReducer` for global state management:
+
+- `store.tsx` defines the initial state and reducer.
+- `types.ts` defines `AppState` and `AppAction`.
+- `useAppStore()` exposes state and dispatch.
+- `aiProvider` stores only the selected provider name, never credentials.
+
+All updates use dispatched actions, such as `dispatch({ type: 'SET_SCHEMA', payload: schema })`.
 
 ### Core State Flow
-1. **Schema Generation**: User describes schema → `generateSchema()` called → schema stored in state
-2. **Schema Refinement**: User edits schema visually or via prompts → `refineSchema()` called → schema updated
-3. **Sample Data**: User generates data based on schema → `generateSampleData()` called → data stored
-4. **Visualization**: Data visualized using Vega-Lite specs → `generateVisualization()` generates chart specs
-5. **Artifacts Export**: Schema exported as SQL, user stories, API docs, or test cases
 
-### Key Services (services/geminiService.ts)
-All Gemini API interactions are centralized here:
-- `generateSchema()`: Creates schema from chat history and uploaded files
-- `refineSchema()`: Updates existing schema based on user prompts
-- `generateSql()`: Converts schema to SQL CREATE statements (supports PostgreSQL/MySQL)
-- `generateUserStories()`: Creates user stories from schema
-- `generateApiDocs()`: Generates API documentation
-- `generateTestCases()`: Creates Gherkin test cases
-- `generateSampleData()`: Generates realistic sample data respecting foreign key relationships
-- `generateVisualization()`: Creates Vega-Lite chart specs with grounding search
-- `generateChartSuggestions()`: Suggests relevant visualizations
+1. User input calls `generateSchema()` and stores a schema.
+2. Visual or conversational edits call `refineSchema()`.
+3. `generateSampleData()` creates related example rows.
+4. `generateVisualization()` creates Vega-Lite chart specifications.
+5. Artifact functions produce SQL, user stories, API docs, and tests.
 
-**Important**: All services use `gemini-2.5-flash` model. Response parsing uses `cleanJsonString()` to strip markdown code fences.
+### Key AI Services
+
+- `services/aiService.ts`: stable application-facing generation API.
+- `services/aiProvider.ts`: provider-neutral same-origin browser client.
+- `services/geminiService.ts`: legacy-named prompt/response layer retained for compatibility.
+- `netlify/functions/ai.mts`: server-side Gemini, OpenAI, and Anthropic adapters.
+
+The generation API includes `generateSchema`, `refineSchema`, `generateSql`, `generateUserStories`, `generateApiDocs`, `generateTestCases`, `generateSampleData`, `generateVisualization`, and `generateChartSuggestions`.
+
+The browser sends normalized requests to `/api/ai`. The function calls Gemini GenerateContent, OpenAI Responses, or Anthropic Messages and returns `{ provider, model, text, sources? }`. JSON responses are normalized by the service layer, including removal of markdown fences.
+
+### Provider Configuration
+
+The Netlify Function reads credentials only from `Netlify.env`:
+
+- `GEMINI_API_KEY`; optional `GEMINI_MODEL` (defaults to `gemini-2.5-flash`).
+- `OPENAI_API_KEY` and operator-supplied `OPENAI_MODEL`.
+- `ANTHROPIC_API_KEY` and operator-supplied `ANTHROPIC_MODEL`.
+
+`VITE_AI_PROVIDER` may set the initial selector value and is not secret. Never expose API keys through Vite variables, React state, local storage, generated artifacts, or client-visible errors.
+
+Production functions use protected Netlify secrets. A deployed browser cannot access a visitor's OS credential vault, so never add a browser key-entry or bring-your-own-key form.
 
 ### Layout Themes
-The app supports three layout modes (controlled via `layoutTheme` state):
-- **Tabs**: Traditional tabbed interface (default)
-- **Wizard**: Step-by-step guided workflow with back/next navigation
-- **Grid**: 2x2 panel layout showing all steps simultaneously
 
-Toggle between layouts in Header component.
+The Header switches between Tabs, Wizard, and Grid layouts. The Header also owns the provider selector. Disable provider changes while a generation request is active.
 
-### Type System (types.ts)
-Core interfaces:
-- `Schema`: Contains `tables` array and optional description
-- `Table`: Has `name`, `description`, and `columns` array
-- `Column`: Includes `name`, `type`, `description`, and foreign key relationships
-- `AppState`: Complete application state including schema, chat history, generated artifacts
-- `AppAction`: Union type of all possible reducer actions
+### Components
 
-### Environment Variables
-Vite configuration (vite.config.ts:14-15) exposes `GEMINI_API_KEY` as both:
-- `process.env.API_KEY`
-- `process.env.GEMINI_API_KEY`
+- `App.tsx`: main layouts and tab management.
+- `PromptWorkspace.tsx`: chat and context-file uploads (`.txt`, `.md`, `.json`).
+- `SchemaVisualizer.tsx`: visual schema editor.
+- `DataVisualizer.tsx`: Vega-Lite renderer and conversational refinement.
+- `ArtifactsPanel.tsx`: generated artifacts and exports.
+- `Header.tsx`: layout and AI-provider controls.
+- `FeedbackLoop.tsx`: schema-refinement chat.
 
-The service uses `process.env.API_KEY` (geminiService.ts:7).
+### Prompts
 
-### Components Structure
-- **App.tsx**: Main component with three layout renderers and tab management
-- **PromptWorkspace.tsx**: Chat interface with file upload (supports .txt, .md, .json)
-- **SchemaVisualizer.tsx**: Visual schema editor with inline editing capabilities
-- **DataVisualizer.tsx**: Vega-Lite chart renderer with conversational refinement
-- **ArtifactsPanel.tsx**: Exports SQL, user stories, API docs, test cases
-- **Header.tsx**: App header with layout theme switcher
-- **FeedbackLoop.tsx**: Refinement chat interface for schema modifications
-
-### Constants & Prompts (constants.ts)
-Contains all Gemini API system prompts:
-- Schema generation/refinement prompts with TypeScript interface definitions
-- Artifact generation prompts (SQL, user stories, API docs, tests)
-- Data generation and visualization prompts with specific formatting requirements
-- Initial chat history and defaults
-
-**Critical Detail**: All prompts include explicit JSON formatting requirements and schema interfaces to ensure consistent responses.
+`constants.ts` contains provider-neutral prompts for schema generation and refinement, artifacts, sample data, and visualization. Structured tasks include explicit JSON formats and interface shapes; preserve those contracts when changing prompts.
 
 ## Common Patterns
 
-### Making API Calls
+### Making AI Calls
+
 ```typescript
 dispatch({ type: 'SET_LOADING', payload: true });
 dispatch({ type: 'SET_ERROR', payload: null });
 
 try {
-  const result = await geminiServiceFunction(params);
+  const result = await aiServiceFunction(params, state.aiProvider);
   dispatch({ type: 'SET_RESULT', payload: result });
-} catch (e) {
-  const error = e instanceof Error ? e.message : 'Unknown error';
-  dispatch({ type: 'SET_ERROR', payload: `Failed: ${error}` });
+} catch (error) {
+  const message = error instanceof Error ? error.message : 'Unknown error';
+  dispatch({ type: 'SET_ERROR', payload: `Failed: ${message}` });
 } finally {
   dispatch({ type: 'SET_LOADING', payload: false });
 }
 ```
 
 ### Adding New Artifacts
-1. Add state property to `AppState` in types.ts
-2. Add action type to `AppAction` union in types.ts
-3. Add reducer case in store.tsx
-4. Create generation prompt in constants.ts
-5. Create service function in geminiService.ts
-6. Add UI in ArtifactsPanel.tsx or new component
+
+1. Add the state property and action type in `types.ts`.
+2. Add the reducer case in `store.tsx`.
+3. Add the generation prompt in `constants.ts`.
+4. Create or update the function exposed by `services/aiService.ts`.
+5. Pass `state.aiProvider` from the UI call site.
+6. Add unit and integration coverage.
 
 ### Path Aliasing
-The project uses `@/` alias pointing to root directory (tsconfig.json:21-24, vite.config.ts:18-20).
-Example: `import { schema } from '@/types'`
 
-## API Integration
+The `@/` alias points to the repository root. Example: `import type { Schema } from '@/types'`.
 
-### Gemini API Usage
-- Model: `gemini-2.5-flash`
-- Response format: JSON with `responseMimeType: "application/json"` for structured outputs
-- Temperature varies by use case (0.1-1.0)
-- Visualization uses Google Search grounding tool for up-to-date Vega-Lite syntax
+## Error and Data Handling
 
-### Error Handling
-- JSON parsing failures log the raw response and throw descriptive errors
-- All API errors are caught and displayed via the global `error` state
-- User-facing error messages include context (e.g., "Failed to generate schema: ...")
+- Provider failures are normalized; upstream response bodies and secrets must not reach the browser.
+- JSON parsing failures should throw descriptive, task-specific errors.
+- Sample-data dates and times must be ISO 8601 strings.
+- Sample data must preserve foreign-key relationships.
+- Vega-Lite output targets v5 and embeds data using the `values` property.
+- Provider citations are optional and should be displayed only when returned.
 
-## Special Considerations
+## WebMCP
 
-### Data Type Handling
-When generating sample data, all date/time types must be ISO 8601 strings (SAMPLE_DATA_PROMPT:165).
-
-### Vega-Lite Integration
-- Charts use Vega-Lite v5
-- Data is embedded directly in specs using `values` property
-- Visualization prompt explicitly requires using search to ensure valid modern syntax (VISUALIZATION_PROMPT:173)
-
-### Foreign Key Consistency
-Sample data generation must maintain referential integrity across tables.
-
-### File Upload Limitations
-Only .txt, .md, and .json files are supported for context (PromptWorkspace.tsx:25).
+The `webmcp/` layer exposes safe, in-page tools without provider credentials. Keep destructive-looking actions in preview mode until the user explicitly applies them through the UI, and preserve the existing structured tool contracts and tests.
