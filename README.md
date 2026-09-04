@@ -82,7 +82,7 @@ The Semantic Loop DevOps Demonstrator demonstrates a complete "semantic loop" wo
 - Conversational chart creation
 - AI-generated chart suggestions
 - Interactive chart rendering
-- Source citations from web searches
+- Optional source citations when returned by the selected provider
 
 ### 📦 Development Artifacts
 
